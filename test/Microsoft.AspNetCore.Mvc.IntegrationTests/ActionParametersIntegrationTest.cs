@@ -383,6 +383,68 @@ namespace Microsoft.AspNetCore.Mvc.IntegrationTests
             Assert.Empty(modelState.Keys);
         }
 
+        [Theory]
+        [InlineData(typeof(ClassWithNoDefaultConstructor), "Name")]
+        [InlineData(typeof(StructWithNoDefaultConstructor), "Name")]
+        [InlineData(typeof(AbstractClassWithNoDefaultConstructor), "Name")]
+        public async Task ActionParameter_NoDefaultConstructor_Fails(Type parameterType, string key)
+        {
+            // Arrange
+            var argumentBinder = ModelBindingTestHelper.GetArgumentBinder();
+            var parameter = new ParameterDescriptor()
+            {
+                ParameterType = parameterType
+            };
+            var testContext = ModelBindingTestHelper.GetTestContext(request =>
+            {
+                request.QueryString = QueryString.Create(key, "James");
+            });
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await argumentBinder.BindModelAsync(parameter, testContext);
+            });
+
+            Assert.Equal(
+                string.Format("Could not create a model binder for model object of type '{0}'.", parameterType.FullName),
+                exception.Message);
+        }
+
+        private struct StructWithNoDefaultConstructor
+        {
+            public StructWithNoDefaultConstructor(string id)
+            {
+                Name = string.Empty;
+                Id = id;
+            }
+            public string Id { get; }
+            public string Name { get; set; }
+        }
+
+        private class ClassWithNoDefaultConstructor
+        {
+            public ClassWithNoDefaultConstructor(int id) { }
+            public string Name { get; set; }
+        }
+
+        private abstract class AbstractClassWithNoDefaultConstructor
+        {
+            private readonly string _name;
+
+            public AbstractClassWithNoDefaultConstructor()
+                : this("James")
+            {
+            }
+
+            public AbstractClassWithNoDefaultConstructor(string name)
+            {
+                _name = name;
+            }
+
+            public string Name { get; set; }
+        }
+
         private class CustomReadOnlyCollection<T> : ICollection<T>
         {
             private ICollection<T> _original;

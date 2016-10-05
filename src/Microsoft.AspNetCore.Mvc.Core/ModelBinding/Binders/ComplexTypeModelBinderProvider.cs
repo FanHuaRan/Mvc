@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Reflection;
 using System.Collections.Generic;
 
 namespace Microsoft.AspNetCore.Mvc.ModelBinding.Binders
@@ -19,7 +20,9 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding.Binders
                 throw new ArgumentNullException(nameof(context));
             }
 
-            if (context.Metadata.IsComplexType && !context.Metadata.IsCollectionType)
+            if (context.Metadata.IsComplexType
+                && !context.Metadata.IsCollectionType
+                && HasDefaultConstructor(context.Metadata.ModelType.GetTypeInfo()))
             {
                 var propertyBinders = new Dictionary<ModelMetadata, IModelBinder>();
                 foreach (var property in context.Metadata.Properties)
@@ -31,6 +34,11 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding.Binders
             }
 
             return null;
+        }
+
+        private bool HasDefaultConstructor(TypeInfo modelTypeInfo)
+        {
+            return !modelTypeInfo.IsAbstract && modelTypeInfo.GetConstructor(Type.EmptyTypes) != null;
         }
     }
 }
