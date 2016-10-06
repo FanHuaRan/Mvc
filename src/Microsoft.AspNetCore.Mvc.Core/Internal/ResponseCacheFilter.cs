@@ -7,6 +7,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Core;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.ResponseCaching;
 using Microsoft.Net.Http.Headers;
 
 namespace Microsoft.AspNetCore.Mvc.Internal
@@ -21,6 +22,7 @@ namespace Microsoft.AspNetCore.Mvc.Internal
         private ResponseCacheLocation? _cacheLocation;
         private bool? _cacheNoStore;
         private string _cacheVaryByHeader;
+        private string[] _cacheVaryByQueryKey;
 
         /// <summary>
         /// Creates a new instance of <see cref="ResponseCacheFilter"/>
@@ -73,6 +75,15 @@ namespace Microsoft.AspNetCore.Mvc.Internal
             set { _cacheVaryByHeader = value; }
         }
 
+        /// <summary>
+        /// TODO:
+        /// </summary>
+        public string[] VaryByQueryKeys
+        {
+            get { return _cacheVaryByQueryKey ?? _cacheProfile.VaryByQueryKeys; }
+            set { _cacheVaryByQueryKey = value; }
+        }
+
         /// <inheritdoc />
         public void OnActionExecuting(ActionExecutingContext context)
         {
@@ -108,6 +119,16 @@ namespace Microsoft.AspNetCore.Mvc.Internal
             if (!string.IsNullOrEmpty(VaryByHeader))
             {
                 headers[HeaderNames.Vary] = VaryByHeader;
+            }
+
+            if (VaryByQueryKeys != null)
+            {
+                var responseCacheFeature = context.HttpContext.GetResponseCacheFeature(); // TODO: replace this call
+                if (responseCacheFeature == null)
+                {
+                    throw new InvalidOperationException($"The response cache middleware must be added when using the {nameof(VaryByQueryKeys)} feature.");
+                }
+                responseCacheFeature.VaryByQueryKeys = VaryByQueryKeys;
             }
 
             if (NoStore)

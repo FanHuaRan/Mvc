@@ -6,8 +6,10 @@ using System.Collections.Generic;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.ResponseCaching;
 using Microsoft.AspNetCore.Routing;
 using Xunit;
+using System.Linq;
 
 namespace Microsoft.AspNetCore.Mvc.Internal
 {
@@ -210,7 +212,7 @@ namespace Microsoft.AspNetCore.Mvc.Internal
             Assert.Equal(output, context.HttpContext.Response.Headers["Cache-control"]);
         }
 
-        public static IEnumerable<object[]> VaryData
+        public static IEnumerable<object[]> VaryByHeaderData
         {
             get
             {
@@ -267,8 +269,8 @@ namespace Microsoft.AspNetCore.Mvc.Internal
         }
 
         [Theory]
-        [MemberData(nameof(VaryData))]
-        public void ResponseCacheCanSetVary(ResponseCacheFilter cache, string varyOutput, string cacheControlOutput)
+        [MemberData(nameof(VaryByHeaderData))]
+        public void ResponseCacheCanSetVaryByHeader(ResponseCacheFilter cache, string varyOutput, string cacheControlOutput)
         {
             // Arrange
             var context = GetActionExecutingContext(new List<IFilterMetadata> { cache });
@@ -281,6 +283,125 @@ namespace Microsoft.AspNetCore.Mvc.Internal
             Assert.Equal(cacheControlOutput, context.HttpContext.Response.Headers["Cache-control"]);
         }
 
+        public static IEnumerable<object[]> VaryByQueryKeyData
+        {
+            get
+            {
+                yield return new object[] {
+                    new ResponseCacheFilter(
+                        new CacheProfile
+                        {
+                            Duration = 10, Location = ResponseCacheLocation.Any,
+                            NoStore = false, VaryByQueryKeys = new string[0]
+                        }),
+                    new string[0],
+                    "public,max-age=10" };
+                yield return new object[] {
+                    new ResponseCacheFilter(
+                        new CacheProfile
+                        {
+                            Duration = 10, Location = ResponseCacheLocation.Any,
+                            NoStore = false, VaryByQueryKeys = new string[] { null }
+                        }),
+                    new string[] { null },
+                    "public,max-age=10" };
+                yield return new object[] {
+                    new ResponseCacheFilter(
+                        new CacheProfile
+                        {
+                            Duration = 10, Location = ResponseCacheLocation.Any,
+                            NoStore = false, VaryByQueryKeys = new[] { "" }
+                        }),
+                    new[] { "" },
+                    "public,max-age=10" };
+                yield return new object[] {
+                    new ResponseCacheFilter(
+                        new CacheProfile
+                        {
+                            Duration = 10, Location = ResponseCacheLocation.Any,
+                            NoStore = false, VaryByQueryKeys = new[] { "Accept" }
+                        }),
+                    new[] { "Accept" },
+                    "public,max-age=10" };
+                yield return new object[] {
+                    new ResponseCacheFilter(
+                        new CacheProfile
+                        {
+                            Duration = 0, Location= ResponseCacheLocation.Any,
+                            NoStore = true, VaryByQueryKeys = new[] { "Accept" }
+                        }),
+                    new[] { "Accept" },
+                    "no-store"
+                };
+                yield return new object[] {
+                    new ResponseCacheFilter(
+                        new CacheProfile
+                        {
+                            Duration = 10, Location = ResponseCacheLocation.Client,
+                            NoStore = false, VaryByQueryKeys = new[] { "Accept" }
+                        }),
+                    new[] { "Accept" },
+                    "private,max-age=10"
+                };
+                yield return new object[] {
+                    new ResponseCacheFilter(
+                        new CacheProfile
+                        {
+                            Duration = 10, Location = ResponseCacheLocation.Client,
+                            NoStore = false, VaryByQueryKeys = new[] { "Accept", "Test" }
+                        }),
+                    new[] { "Accept", "Test" },
+                    "private,max-age=10"
+                };
+                yield return new object[] {
+                    new ResponseCacheFilter(
+                        new CacheProfile
+                        {
+                            Duration = 31536000, Location = ResponseCacheLocation.Any,
+                            NoStore = false, VaryByQueryKeys = new[] { "Accept", "Test" }
+                        }),
+                    new[] { "Accept", "Test" },
+                    "public,max-age=31536000"
+                };
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(VaryByQueryKeyData))]
+        public void ResponseCacheCanSetVaryByQueryKeys(ResponseCacheFilter cache, string[] varyOutput, string cacheControlOutput)
+        {
+            // Arrange
+            var context = GetActionExecutingContext(new List<IFilterMetadata> { cache });
+            context.HttpContext.Features.Set(new ResponseCacheFeature());
+
+            // Act
+            cache.OnActionExecuting(context);
+
+            // Assert
+            Assert.True(context.HttpContext.Features.Get<ResponseCacheFeature>().VaryByQueryKeys.SequenceEqual(varyOutput));
+            Assert.Equal(cacheControlOutput, context.HttpContext.Response.Headers["Cache-control"]);
+        }
+
+        [Fact]
+        public void NonEmptyVaryByQueryKeys_WithoutConfiguringMiddleware_Throws()
+        {
+            // Arrange
+            var cache = new ResponseCacheFilter(
+                new CacheProfile
+                {
+                    Duration = 0,
+                    Location = ResponseCacheLocation.None,
+                    NoStore = true,
+                    VaryByHeader = null,
+                    VaryByQueryKeys = new[] { "Test" }
+                });
+            var context = GetActionExecutingContext(new List<IFilterMetadata> { cache });
+
+            // Act & Assert
+            var exception = Assert.Throws<InvalidOperationException>(() => cache.OnActionExecuting(context));
+            Assert.Equal($"The response cache middleware must be added when using the VaryByQueryKeys feature.", exception.Message);
+        }
+
         [Fact]
         public void SetsPragmaOnNoCache()
         {
@@ -288,7 +409,10 @@ namespace Microsoft.AspNetCore.Mvc.Internal
             var cache = new ResponseCacheFilter(
                 new CacheProfile
                 {
-                    Duration = 0, Location = ResponseCacheLocation.None, NoStore = true, VaryByHeader = null
+                    Duration = 0,
+                    Location = ResponseCacheLocation.None,
+                    NoStore = true,
+                    VaryByHeader = null
                 });
             var context = GetActionExecutingContext(new List<IFilterMetadata> { cache });
 

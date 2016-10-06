@@ -78,6 +78,11 @@ namespace Microsoft.AspNetCore.Mvc
         public string VaryByHeader { get; set; }
 
         /// <summary>
+        /// TODO:
+        /// </summary>
+        public string[] VaryByQueryKeys { get; set; }
+
+        /// <summary>
         /// Gets or sets the value of the cache profile name.
         /// </summary>
         public string CacheProfileName { get; set; }
@@ -117,6 +122,7 @@ namespace Microsoft.AspNetCore.Mvc
             _noStore = _noStore ?? selectedProfile?.NoStore;
             _location = _location ?? selectedProfile?.Location;
             VaryByHeader = VaryByHeader ?? selectedProfile?.VaryByHeader;
+            VaryByQueryKeys = VaryByQueryKeys ?? selectedProfile?.VaryByQueryKeys;
 
             // ResponseCacheFilter cannot take any null values. Hence, if there are any null values,
             // the properties convert them to their defaults and are passed on.
@@ -125,7 +131,8 @@ namespace Microsoft.AspNetCore.Mvc
                 Duration = _duration,
                 Location = _location,
                 NoStore = _noStore,
-                VaryByHeader = VaryByHeader
+                VaryByHeader = VaryByHeader,
+                VaryByQueryKeys = VaryByQueryKeys
             });
         }
     }
