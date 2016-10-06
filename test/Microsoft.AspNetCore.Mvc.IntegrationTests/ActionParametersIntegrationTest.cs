@@ -384,10 +384,10 @@ namespace Microsoft.AspNetCore.Mvc.IntegrationTests
         }
 
         [Theory]
-        [InlineData(typeof(ClassWithNoDefaultConstructor), "Name")]
-        [InlineData(typeof(StructWithNoDefaultConstructor), "Name")]
-        [InlineData(typeof(AbstractClassWithNoDefaultConstructor), "Name")]
-        public async Task ActionParameter_NoDefaultConstructor_Fails(Type parameterType, string key)
+        [InlineData(typeof(ClassWithNoDefaultConstructor))]
+        [InlineData(typeof(PointStruct))]
+        [InlineData(typeof(AbstractClassWithNoDefaultConstructor))]
+        public async Task ActionParameter_NoDefaultConstructor_Fails(Type parameterType)
         {
             // Arrange
             var argumentBinder = ModelBindingTestHelper.GetArgumentBinder();
@@ -395,31 +395,27 @@ namespace Microsoft.AspNetCore.Mvc.IntegrationTests
             {
                 ParameterType = parameterType
             };
-            var testContext = ModelBindingTestHelper.GetTestContext(request =>
-            {
-                request.QueryString = QueryString.Create(key, "James");
-            });
+            var testContext = ModelBindingTestHelper.GetTestContext();
 
             // Act & Assert
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            {
-                await argumentBinder.BindModelAsync(parameter, testContext);
-            });
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => argumentBinder.BindModelAsync(parameter, testContext));
 
             Assert.Equal(
                 string.Format("Could not create a model binder for model object of type '{0}'.", parameterType.FullName),
                 exception.Message);
         }
 
-        private struct StructWithNoDefaultConstructor
+        // C#, by default, creates a parameterless constructor and doesn't allow to create one explicitly.
+        private struct PointStruct
         {
-            public StructWithNoDefaultConstructor(string id)
+            public PointStruct(double x, double y)
             {
-                Name = string.Empty;
-                Id = id;
+                X = x;
+                Y = y;
             }
-            public string Id { get; }
-            public string Name { get; set; }
+            public double X { get; }
+            public double Y { get; }
         }
 
         private class ClassWithNoDefaultConstructor

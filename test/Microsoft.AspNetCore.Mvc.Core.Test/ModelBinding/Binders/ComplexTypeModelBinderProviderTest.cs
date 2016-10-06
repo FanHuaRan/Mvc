@@ -56,7 +56,22 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding.Binders
         }
 
         [Theory]
-        [InlineData(typeof(StructWithNoDefaultConstructor))]
+        [InlineData(typeof(PointStructWithExplicitConstructor))]
+        [InlineData(typeof(PointStructWithNoExplicitConstructor))]
+        public void Create_ForStructModel_ReturnsNull(Type modelType)
+        {
+            // Arrange
+            var provider = new ComplexTypeModelBinderProvider();
+            var context = new TestModelBinderProviderContext(modelType);
+
+            // Act
+            var result = provider.GetBinder(context);
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Theory]
         [InlineData(typeof(ClassWithNoDefaultConstructor))]
         [InlineData(typeof(ClassWithStaticConstructor))]
         public void Create_ForModelTypeWith_NoDefaultPublicConstructor_ReturnsNull(Type modelType)
@@ -86,10 +101,15 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding.Binders
             Assert.Null(result);
         }
 
-        // Actually c# doesn't allow creating parameterless constructors for structs.
-        private struct StructWithNoDefaultConstructor
+        private struct PointStructWithNoExplicitConstructor
         {
-            public StructWithNoDefaultConstructor(double x, double y)
+            public double X { get; set; }
+            public double Y { get; set; }
+        }
+
+        private struct PointStructWithExplicitConstructor
+        {
+            public PointStructWithExplicitConstructor(double x, double y)
             {
                 X = x;
                 Y = y;
