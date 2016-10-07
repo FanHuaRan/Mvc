@@ -292,33 +292,6 @@ namespace Microsoft.AspNetCore.Mvc.Internal
                         new CacheProfile
                         {
                             Duration = 10, Location = ResponseCacheLocation.Any,
-                            NoStore = false, VaryByQueryKeys = new string[0]
-                        }),
-                    new string[0],
-                    "public,max-age=10" };
-                yield return new object[] {
-                    new ResponseCacheFilter(
-                        new CacheProfile
-                        {
-                            Duration = 10, Location = ResponseCacheLocation.Any,
-                            NoStore = false, VaryByQueryKeys = new string[] { null }
-                        }),
-                    new string[] { null },
-                    "public,max-age=10" };
-                yield return new object[] {
-                    new ResponseCacheFilter(
-                        new CacheProfile
-                        {
-                            Duration = 10, Location = ResponseCacheLocation.Any,
-                            NoStore = false, VaryByQueryKeys = new[] { "" }
-                        }),
-                    new[] { "" },
-                    "public,max-age=10" };
-                yield return new object[] {
-                    new ResponseCacheFilter(
-                        new CacheProfile
-                        {
-                            Duration = 10, Location = ResponseCacheLocation.Any,
                             NoStore = false, VaryByQueryKeys = new[] { "Accept" }
                         }),
                     new[] { "Accept" },
@@ -372,13 +345,13 @@ namespace Microsoft.AspNetCore.Mvc.Internal
         {
             // Arrange
             var context = GetActionExecutingContext(new List<IFilterMetadata> { cache });
-            context.HttpContext.Features.Set(new ResponseCacheFeature());
+            context.HttpContext.Features.Set<IResponseCacheFeature>(new ResponseCacheFeature());
 
             // Act
             cache.OnActionExecuting(context);
 
             // Assert
-            Assert.True(context.HttpContext.Features.Get<ResponseCacheFeature>().VaryByQueryKeys.SequenceEqual(varyOutput));
+            Assert.True(context.HttpContext.Features.Get<IResponseCacheFeature>().VaryByQueryKeys.SequenceEqual(varyOutput));
             Assert.Equal(cacheControlOutput, context.HttpContext.Response.Headers["Cache-control"]);
         }
 

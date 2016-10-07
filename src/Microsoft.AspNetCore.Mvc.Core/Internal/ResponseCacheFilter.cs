@@ -123,7 +123,7 @@ namespace Microsoft.AspNetCore.Mvc.Internal
 
             if (VaryByQueryKeys != null)
             {
-                var responseCacheFeature = context.HttpContext.GetResponseCacheFeature(); // TODO: replace this call
+                var responseCacheFeature = context.HttpContext.Features.Get<IResponseCacheFeature>();
                 if (responseCacheFeature == null)
                 {
                     throw new InvalidOperationException($"The response cache middleware must be added when using the {nameof(VaryByQueryKeys)} feature.");

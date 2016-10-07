@@ -214,7 +214,7 @@ namespace Microsoft.AspNetCore.Mvc
             };
             var filter = (ResponseCacheFilter)responseCache.CreateInstance(GetServiceProvider(cacheProfiles: null));
             var context = GetActionExecutingContext(filter);
-            context.HttpContext.Features.Set(new ResponseCacheFeature());
+            context.HttpContext.Features.Set<IResponseCacheFeature>(new ResponseCacheFeature());
 
             // Act
             filter.OnActionExecuting(context);
@@ -228,7 +228,7 @@ namespace Microsoft.AspNetCore.Mvc
             Assert.True(response.Headers.TryGetValue("Vary", out values));
             data = Assert.Single(values);
             Assert.Equal("Accept", data);
-            Assert.True(varyByQueryKeys.SequenceEqual(context.HttpContext.Features.Get<ResponseCacheFeature>().VaryByQueryKeys));
+            Assert.True(varyByQueryKeys.SequenceEqual(context.HttpContext.Features.Get<IResponseCacheFeature>().VaryByQueryKeys));
         }
 
         public static TheoryData<ResponseCacheAttribute, string> CacheControlData
